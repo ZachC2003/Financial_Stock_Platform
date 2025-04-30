@@ -143,6 +143,36 @@ When the application needs financial data, it follows this process:
 
 4. Data is then passed to the requesting component (agent or UI)
 
+## Getting the Code
+
+You can get the Financial Stock Platform codebase in one of these ways:
+
+### Option 1: Clone the Repository
+
+```bash
+# Using HTTPS
+git clone https://github.com/username/financial-stock-platform.git
+
+# Or using SSH
+git clone git@github.com:username/financial-stock-platform.git
+```
+
+### Option 2: Fork the Repository (Recommended for Contributors)
+
+1. Navigate to the [Financial Stock Platform repository](https://github.com/username/financial-stock-platform) on GitHub
+2. Click the "Fork" button in the top-right corner
+3. Select your GitHub account as the destination for the fork
+4. Clone your forked repository to your local machine:
+   ```bash
+   git clone https://github.com/YOUR-USERNAME/financial-stock-platform.git
+   ```
+
+### Option 3: Download as ZIP
+
+1. Navigate to the [Financial Stock Platform repository](https://github.com/username/financial-stock-platform) on GitHub
+2. Click the "Code" button and select "Download ZIP"
+3. Extract the ZIP file to your desired location
+
 ## Setup and Running
 
 1. Install dependencies:
@@ -152,7 +182,23 @@ When the application needs financial data, it follows this process:
 
 2. Configure your `.env` file with appropriate API keys (copy from `.env.example`)
 
-3. **Starting the Stock Server**:
+3. **Set up the Supabase database**:
+
+   You can set up the Supabase database tables in two ways:
+   
+   **Option 1: Using the Python setup script (Recommended)**
+   ```
+   python setup_supabase.py
+   ```
+   This will automatically create all required tables in your Supabase project.
+   
+   **Option 2: Manually using the SQL Editor**
+   - Copy the contents of `supabase_setup.sql`
+   - Go to your Supabase project dashboard
+   - Navigate to the SQL Editor
+   - Paste the SQL script and run it
+
+4. **Starting the Stock Server**:
    
    While the Streamlit app can auto-start the stock server, it's often better to run it separately especially for development:
    ```
@@ -161,7 +207,7 @@ When the application needs financial data, it follows this process:
 
    The stock server will start on http://localhost:8000 by default. You can verify it's running by accessing http://localhost:8000/docs in your browser.
 
-4. Run the Streamlit application:
+5. Run the Streamlit application:
    ```
    # In terminal #2
    streamlit run streamlit_app.py
