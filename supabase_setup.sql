@@ -19,5 +19,28 @@ ALTER TABLE analysis_results ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow read access to all users" ON analysis_results FOR SELECT USING (true);
 CREATE POLICY "Allow insert access to all users" ON analysis_results FOR INSERT WITH CHECK (true);
 
+-- Create institutional_holdings_history table for tracking ownership changes
+CREATE TABLE IF NOT EXISTS institutional_holdings_history (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  symbol TEXT NOT NULL,
+  institution_name TEXT NOT NULL, 
+  date DATE NOT NULL,
+  shares BIGINT,
+  value NUMERIC,
+  percentage NUMERIC,
+  change_from_previous NUMERIC,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Add indexes for efficient querying
+CREATE INDEX IF NOT EXISTS institutional_holdings_symbol_idx ON institutional_holdings_history(symbol);
+CREATE INDEX IF NOT EXISTS institutional_holdings_date_idx ON institutional_holdings_history(date);
+CREATE INDEX IF NOT EXISTS institutional_holdings_institution_idx ON institutional_holdings_history(institution_name);
+
+-- Enable row level security 
+ALTER TABLE institutional_holdings_history ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow read access to all users" ON institutional_holdings_history FOR SELECT USING (true);
+CREATE POLICY "Allow insert access to all users" ON institutional_holdings_history FOR INSERT WITH CHECK (true);
+
 -- Let's confirm it worked
-SELECT 'Table setup complete!' as result;
+SELECT 'Tables setup complete!' as result;
