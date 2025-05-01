@@ -818,6 +818,10 @@ class InstitutionalActivityAgent(BaseAgent):
             
             self.supabase_client.store_analysis_result(results_copy)
             self.logger.info(f"Stored institutional activity analysis for {symbol}")
+            
+            # Also store quarterly institutional holdings data for historical tracking
+            self._store_quarterly_institutional_data(symbol, analysis_results)
+            
         except Exception as e:
             self.logger.error(f"Error storing institutional activity analysis for {symbol}: {e}")
     
@@ -851,3 +855,228 @@ class InstitutionalActivityAgent(BaseAgent):
         except Exception as e:
             self.logger.error(f"Error getting institutional activity for {symbol}: {e}")
             return None
+
+    def _get_current_quarter(self) -> str:
+        """
+        Get current quarter in YYYY-QN format (e.g., 2025-Q2)
+        
+        Returns:
+            str: Current quarter in YYYY-QN format
+        """
+        current_date = datetime.now()
+        year = current_date.year
+        month = current_date.month
+        quarter = (month - 1) // 3 + 1  # Convert month to quarter (1-4)
+        return f"{year}-Q{quarter}"
+    
+    def _store_quarterly_institutional_data(self, symbol: str, analysis_results: Dict[str, Any]):
+        """
+        Store institutional ownership data by quarter for historical tracking
+        
+        Args:
+            symbol (str): Stock symbol
+            analysis_results (Dict[str, Any]): Analysis results containing institutional data
+        """
+        try:
+            current_quarter = self._get_current_quarter()
+            
+            # Check if we already have data for this quarter
+            existing_data = self._get_quarterly_institutional_data(symbol, current_quarter)
+            if existing_data is not None:
+                self.logger.info(f"Quarterly data for {symbol} in {current_quarter} already exists, skipping")
+                return
+            
+            # Prepare data for storage
+            institutional_data = {
+                "symbol": symbol,
+                "quarter": current_quarter,
+                "institutional_ownership_pct": analysis_results.get("institutional_ownership_percentage", 0.0),
+                "total_shares": analysis_results.get("total_institutional_shares", 0),
+                "data": json.dumps({
+                    "top_holders": analysis_results.get("top_institutional_holders", []),
+                    "holders_count": analysis_results.get("number_of_institutional_holders", 0),
+                    "total_value": analysis_results.get("total_institutional_value", 0),
+                    "shares_outstanding": analysis_results.get("shares_outstanding", 0)
+                })
+            }
+            
+            # Store in Supabase
+            self.supabase_client.store_institutional_holdings_history(institutional_data)
+            self.logger.info(f"Stored quarterly institutional data for {symbol} in {current_quarter}")
+            
+        except Exception as e:
+            self.logger.error(f"Error storing quarterly institutional data for {symbol}: {e}")
+    
+    def _get_quarterly_institutional_data(self, symbol: str, quarter: Optional[str] = None) -> Optional[Dict]:
+        """
+        Get institutional holdings data for a specific quarter
+        
+        Args:
+            symbol (str): Stock symbol
+            quarter (Optional[str]): Quarter in YYYY-QN format, if None gets the current quarter
+            
+        Returns:
+            Optional[Dict]: Quarterly institutional data or None if not found
+        """
+        try:
+            if quarter is None:
+                quarter = self._get_current_quarter()
+                
+            data = self.supabase_client.get_institutional_holdings_history(symbol, quarter)
+            if data is not None and not data.empty:
+                result = data.iloc[0].to_dict()
+                # Parse any JSON strings
+                if "data" in result and isinstance(result["data"], str):
+                    result["data"] = json.loads(result["data"])
+                return result
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error getting quarterly institutional data for {symbol}: {e}")
+            return None
+    
+    def get_institutional_ownership_change(self, symbol: str, quarters_back: int = 4) -> Dict[str, Any]:
+        """
+        Calculate change in institutional ownership over time
+        
+        Args:
+            symbol (str): Stock symbol
+            quarters_back (int): Number of quarters to look back
+            
+        Returns:
+            Dict[str, Any]: Institutional ownership change data
+        """
+        try:
+            # Get current quarter
+            current_quarter = self._get_current_quarter()
+            current_data = self._get_quarterly_institutional_data(symbol, current_quarter)
+            
+            # If no current data, try to get the most recent quarter's data
+            if current_data is None:
+                # This will be handled by the historical data retrieval below
+                current_data = {"institutional_ownership_pct": 0.0, "quarter": current_quarter}
+            
+            # Get historical quarters
+            historical_data = self._get_historical_institutional_data(symbol, quarters_back)
+            
+            # Calculate changes
+            current_ownership = current_data.get("institutional_ownership_pct", 0.0)
+            
+            # If we have historical data to compare against
+            if historical_data and len(historical_data) > 0:
+                # Sort by quarter (newest first, excluding current quarter)
+                sorted_data = sorted(historical_data, 
+                                     key=lambda x: x.get("quarter", ""), 
+                                     reverse=True)
+                
+                # Get the oldest data point for long-term change
+                oldest_data = sorted_data[-1] if sorted_data else None
+                oldest_ownership = oldest_data.get("institutional_ownership_pct", current_ownership) if oldest_data else current_ownership
+                
+                # Get the previous quarter for short-term change
+                previous_data = sorted_data[0] if sorted_data else None
+                previous_ownership = previous_data.get("institutional_ownership_pct", current_ownership) if previous_data else current_ownership
+                
+                # Calculate changes
+                long_term_change = current_ownership - oldest_ownership
+                short_term_change = current_ownership - previous_ownership
+                
+                # Generate descriptions
+                if abs(short_term_change) < 0.5:
+                    short_term_desc = "stable"
+                elif short_term_change > 0:
+                    short_term_desc = "increasing"
+                else:
+                    short_term_desc = "decreasing"
+                
+                if abs(long_term_change) < 1.0:
+                    long_term_desc = "stable"
+                elif long_term_change > 0:
+                    long_term_desc = "increasing"
+                else:
+                    long_term_desc = "decreasing"
+                
+                # Determine sentiment
+                if long_term_desc == "increasing" or (long_term_desc == "stable" and short_term_desc == "increasing"):
+                    sentiment = "bullish"
+                elif long_term_desc == "decreasing" or (long_term_desc == "stable" and short_term_desc == "decreasing"):
+                    sentiment = "bearish"
+                else:
+                    sentiment = "neutral"
+                
+                return {
+                    "symbol": symbol,
+                    "current_ownership": current_ownership,
+                    "previous_ownership": previous_ownership,
+                    "oldest_ownership": oldest_ownership,
+                    "short_term_change": short_term_change,
+                    "long_term_change": long_term_change,
+                    "short_term_trend": short_term_desc,
+                    "long_term_trend": long_term_desc,
+                    "sentiment": sentiment,
+                    "quarters_analyzed": len(historical_data) + 1,  # Include current quarter
+                    "has_historical_data": True
+                }
+            
+            # Default response if no historical data available
+            return {
+                "symbol": symbol,
+                "current_ownership": current_ownership,
+                "previous_ownership": current_ownership,
+                "oldest_ownership": current_ownership,
+                "short_term_change": 0.0,
+                "long_term_change": 0.0,
+                "short_term_trend": "stable",
+                "long_term_trend": "stable",
+                "sentiment": "neutral",
+                "quarters_analyzed": 1,
+                "has_historical_data": False
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error calculating institutional ownership change for {symbol}: {e}")
+            return {
+                "symbol": symbol,
+                "error": str(e),
+                "has_historical_data": False
+            }
+    
+    def _get_historical_institutional_data(self, symbol: str, quarters_back: int = 4) -> List[Dict]:
+        """
+        Get historical institutional data for a symbol
+        
+        Args:
+            symbol (str): Stock symbol
+            quarters_back (int): Number of quarters to look back
+            
+        Returns:
+            List[Dict]: List of historical quarterly data points
+        """
+        try:
+            # Get current quarter
+            current_quarter = self._get_current_quarter()
+            year = int(current_quarter.split('-')[0])
+            quarter = int(current_quarter.split('Q')[1])
+            
+            # Generate list of previous quarters
+            historical_quarters = []
+            for i in range(1, quarters_back + 1):  # Skip current quarter (i=0)
+                q = quarter - i
+                y = year
+                while q <= 0:
+                    q += 4
+                    y -= 1
+                historical_quarters.append(f"{y}-Q{q}")
+            
+            # Get data for each quarter
+            historical_data = []
+            for q in historical_quarters:
+                data = self._get_quarterly_institutional_data(symbol, q)
+                if data is not None:
+                    historical_data.append(data)
+            
+            return historical_data
+            
+        except Exception as e:
+            self.logger.error(f"Error getting historical institutional data for {symbol}: {e}")
+            return []
