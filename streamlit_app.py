@@ -2,6 +2,9 @@
 # Import only the set_page_config function first
 from streamlit import set_page_config
 
+# Import backend services
+from backend.data_services.supabase_client import SupabaseClient
+
 # Set page config must be the first Streamlit command
 set_page_config(
     page_title="Financial Stock Platform",
@@ -95,6 +98,26 @@ st.markdown("""
         padding: 1rem;
         border-left: 5px solid #F44336;
         margin-bottom: 1rem;
+    }
+    
+    /* Make tab labels always visible */
+    button[data-baseweb="tab"] {
+        font-size: 1rem !important;
+        font-weight: bold !important;
+        color: #424242 !important;
+    }
+    
+    /* Style the active tab with a visible indicator */
+    button[data-baseweb="tab"][aria-selected="true"] {
+        background-color: rgba(30, 136, 229, 0.2) !important;
+        color: #1E88E5 !important;
+        border-bottom: 2px solid #1E88E5 !important;
+    }
+    
+    /* Add a subtle hover effect for better UI feedback */
+    button[data-baseweb="tab"]:hover {
+        background-color: rgba(30, 136, 229, 0.1) !important;
+        color: #1E88E5 !important;
     }
     .insight-box {
         background-color: #E8F5E9;
@@ -2991,6 +3014,32 @@ if main_page == "Single Stock Analysis":
                                 
                                 # Make sure we're not trying to access any undefined variables
                                 display_institutional_analysis(activity_data)
+                                
+                                # Add an expander section explaining how the system learns from institutional data over time
+                                with st.expander("📊 How We Track Institutional Changes Over Time"):
+                                    st.markdown("""
+                                    ### Quarterly Institutional Ownership Tracking
+                                    
+                                    The Financial Stock Platform stores institutional ownership data in quarterly snapshots to enable advanced 
+                                    trend analysis and learning capabilities:
+                                    
+                                    #### 📅 Data Storage System
+                                    - **Quarterly Format**: Data is stored in `YYYY-Q#` format (e.g., "2025-Q2")
+                                    - **Supabase Database**: Uses the `institutional_holdings_history` table
+                                    - **Automatic Snapshots**: Each time institutional data is analyzed, a quarterly snapshot is saved
+                                    
+                                    #### 📈 Learning Capabilities
+                                    - **Trend Detection**: Identifies increasing/decreasing trends in institutional ownership
+                                    - **Sentiment Analysis**: Determines bullish/bearish sentiment based on ownership patterns
+                                    - **Change Magnitude**: Compares both short-term (previous quarter) and long-term (historical) changes
+                                    
+                                    #### 🔍 Benefits for Analysis
+                                    - **Early Signal Detection**: Institutional buying/selling often precedes major price movements
+                                    - **Smart Money Tracking**: Follow what professional investors are doing with their positions
+                                    - **Improved Accuracy**: The system becomes more accurate as it builds historical context
+                                    
+                                    The system will continuously improve its analysis as more quarterly data points are collected over time.
+                                    """)
                             except NameError as e:
                                 # Specifically catch NameError which includes 'name X is not defined'
                                 st.error(f"Name error in institutional activity display: {e}")
@@ -3361,6 +3410,11 @@ elif main_page == "Market News":
 
 else:
     st.info("Select a mode from the sidebar to begin.")
+
+
+
+
+
 
 
 
