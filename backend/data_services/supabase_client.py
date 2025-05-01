@@ -306,6 +306,71 @@ class SupabaseClient:
             print(f"WARNING: Failed to store institutional holdings in Supabase: {e}")
             return {}
     
+    def store_institutional_holdings_history(self, data):
+        """
+        Store institutional holdings history data in the dedicated institutional_holdings_history table
+        
+        Args:
+            data (dict): Data to store with the following structure:
+                - symbol (str): Stock symbol
+                - quarter (str): Quarter in YYYY-Q# format (e.g., 2025-Q2)
+                - institutional_ownership_pct (float): Total institutional ownership percentage
+                - total_shares (int): Total institutional shares held
+                - data (str/dict): JSON data with detailed holdings information
+                
+        Returns:
+            dict: Response from Supabase or empty dict if using mock mode
+        """
+        # If using mock mode or Supabase init failed, return empty success dict
+        if self.use_mock or self.supabase is None:
+            return {}
+            
+        try:
+            # Ensure data is a dict with required fields
+            if not isinstance(data, dict) or 'symbol' not in data or 'quarter' not in data:
+                print("WARNING: Invalid data format for institutional holdings history")
+                return {}
+                
+            response = self.supabase.table("institutional_holdings_history").insert(data).execute()
+            return response.data
+        except Exception as e:
+            print(f"WARNING: Failed to store institutional holdings history in Supabase: {e}")
+            return {}
+    
+    def get_institutional_holdings_history(self, symbol, quarter=None, limit=1):
+        """
+        Retrieve institutional holdings history data for a symbol and quarter
+        
+        Args:
+            symbol (str): Stock symbol
+            quarter (str): Optional quarter in YYYY-Q# format (e.g., 2025-Q2). If None, gets most recent.
+            limit (int): Maximum number of records to return (default 1)
+            
+        Returns:
+            pd.DataFrame: Institutional holdings history data or empty DataFrame if using mock mode
+        """
+        # If using mock mode or Supabase init failed, return empty DataFrame
+        if self.use_mock or self.supabase is None:
+            return pd.DataFrame()
+            
+        try:
+            query = self.supabase.table("institutional_holdings_history").select("*").eq("symbol", symbol)
+            
+            if quarter:
+                # Get specific quarter
+                query = query.eq("quarter", quarter)
+                response = query.execute()
+            else:
+                # Get most recent quarter(s)
+                response = query.order("quarter", desc=True).limit(limit).execute()
+            
+            if response.data:
+                return pd.DataFrame(response.data)
+            return pd.DataFrame()
+        except Exception as e:
+            print(f"WARNING: Failed to get institutional holdings history from Supabase: {e}")
+            return pd.DataFrame()
+    
     def get_historical_institutional_ownership(self, symbol, quarters=4):
         """
         Get historical institutional ownership data for time-series analysis
