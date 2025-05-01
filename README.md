@@ -280,6 +280,18 @@ For development:
 - Verify the stock server is running when in real mode
 - For missing data, the application will fall back to mock data or display appropriate messages
 
+## Free Tier Limitations
+
+The free tier version of this platform has the following limitations:
+
+- **Limited Ticker Support**: Only the following stock tickers are available in the free tier:
+  - AAPL (Apple)
+  - GOOGL (Alphabet/Google)
+  - MSFT (Microsoft)
+  - NVDA (NVIDIA)
+  - TSLA (Tesla)
+- To analyze other stocks, you'll need to upgrade to a paid tier for the api keys
+
 ## Step-by-Step Process Flow
 
 Here's a detailed walkthrough of how data flows through the system when a user enters a stock ticker:
