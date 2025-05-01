@@ -90,6 +90,35 @@ The application can operate in two modes:
 - **Institutional Activity Agent**: Tracks institutional ownership and movements
 - **Risk Assessment Agent**: Calculates risk metrics and generates risk profiles
 
+### Institutional Investor Tracking System
+
+The platform features a sophisticated institutional ownership tracking system that monitors changes in institutional investor behavior over time:
+
+#### Quarterly Data Storage
+
+- **Historical Database**: Institutional holdings are stored in a dedicated `institutional_holdings_history` table in Supabase
+- **Quarterly Format**: Data is organized by quarter in `YYYY-Q#` format (e.g., "2025-Q2")
+- **Automatic Snapshots**: Each time institutional data is analyzed, the system automatically stores a quarterly snapshot
+
+#### Learning Capabilities
+
+- **Trend Detection**: Identifies increasing, decreasing, or stable trends in institutional ownership
+- **Sentiment Analysis**: Determines bullish/bearish institutional sentiment based on ownership patterns
+- **Change Comparison**: Analyzes both short-term (quarter-over-quarter) and long-term (historical) changes
+
+#### Benefits for Investors
+
+- **Early Signal Detection**: Institutional buying/selling often precedes major price movements
+- **Smart Money Tracking**: Follow what professional investors are doing with their positions
+- **Progressive Learning**: The system becomes more accurate as it builds historical context over time
+
+#### Implementation Details
+
+- The `InstitutionalActivityAgent` manages the data collection and analysis
+- `get_institutional_ownership_change()` method calculates trends and sentiment
+- Time-series data enables tracking concentration changes among top holders over multiple quarters
+- The system accounts for multiple data sources (yfinance, Alpha Vantage) for comprehensive coverage
+
 #### Data Services
 
 - **Data Connector**: Central hub for all data requests
